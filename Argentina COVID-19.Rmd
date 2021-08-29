@@ -1,0 +1,201 @@
+---
+title: "Argentina COVID-19 Cases and Vaccinations"
+subtitle: "ETC5523 Assignment 1 - Blog Entry 1"
+author:
+  - Yu Luo
+date: "`r Sys.Date()`"
+output: 
+  bookdown::html_document2:
+    css: monashreport.css
+    includes:
+      before_body: header.html
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#install.packages("tidycovid19")
+library(tidycovid19)
+library(zoo)
+library(tidyverse)
+library(here)
+library(ggplot2)
+library(gridExtra)
+library(gt)
+library(DT)
+library(sparkline)
+```
+
+# Introduction
+
+# Data Description
+https://github.com/joachim-gassen/tidycovid19
+
+```{r downloaddata}
+covid_df <- 
+  download_merged_data(cached = TRUE, silent = TRUE)
+```
+
+```{r tidydata}
+covid_data <- covid_df %>%
+  mutate(
+    new_cases = confirmed - lag(confirmed),
+    ave_new_cases = 
+      rollmean(new_cases, 7, na.pad=TRUE, align="right"),
+    new_cases = ifelse(new_cases < 0, 
+                       0, new_cases),
+    new_vaccinations = 
+      total_vaccinations - lag(total_vaccinations),
+    new_vaccinations = ifelse(new_vaccinations < 0, 
+                       0, new_vaccinations),  
+    fatality_rate = 
+           round(deaths/confirmed * 100,2),
+    confirmed_over_pop = 
+      round(confirmed/population * 100, 2),
+    vaccinations_over_pop =
+      round(total_vaccinations/population, 2))
+```
+
+
+# Analysis and Exploration
+
+```{r latest_arg}
+arg_latest <- covid_data %>% 
+  filter(iso3c == "ARG") %>%
+  select(date, confirmed, deaths,  
+         total_vaccinations) %>% 
+  arrange(desc(date)) %>% 
+  head(1) 
+
+gt(arg_latest) %>% 
+  tab_header(title = "Latest Situation of COVID-19 Infection in Argentina",
+             subtitle = "Total cases and deaths and vaccinations") %>% 
+  tab_source_note(md("Source: {tidycovid19}: An R Package to Download, Tidy and Visualize Covid-19 Related Data")) %>% 
+  cols_label(
+    confirmed = html("Total Confirmed Cases<br>(ppl)"),
+    deaths = html("Total Death<br>(ppl)"),
+    total_vaccinations = 
+      html("Total Vaccinations<br>(dose)")
+  )
+```
+
+## Confirmed Cases
+
+```{r case-comp}
+top10_case <- covid_data %>%
+  select(date, country, confirmed, deaths, 
+         fatality_rate, confirmed_over_pop) %>% 
+  arrange(desc(date), desc(confirmed)) %>% 
+  head(10)
+
+gt(top10_case) %>% 
+  tab_header(title = "",
+             subtitle = "") %>% 
+  tab_source_note(md("Source: ")) %>% 
+  cols_label(
+    date = html(""),
+    country = html(""),
+    confirmed = 
+      html(""),
+    deaths = html(""),
+    fatality_rate = html(""),
+    confirmed_over_pop = 
+      html("")
+  )
+```
+
+```{r stripes}
+plot_covid19_stripes(
+  type = "confirmed", 
+  countries  = c("USA", "IND", "BRA", "FRA", "RUS", "GBR", "TUR", "ARG", "COL", "IRN"),
+  sort_countries = "countries")
+```
+
+```{r case}
+case_p1 <- covid_data %>% 
+  filter(iso3c == "ARG",
+         date > "2020-03-02") %>% 
+  ggplot(aes(x = date,
+             y = fatality_rate)) +
+  geom_line(color ="red") +
+  scale_y_continuous(labels = scales::percent) +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) 
+
+case_p2 <- covid_data %>%
+  filter(iso3c == "ARG",
+         date > "2020-03-02") %>% 
+  ggplot(aes(x = date,
+             y = new_cases)) +
+  geom_col(fill = "Steelblue")  
+
+grid.arrange(case_p1, case_p2, ncol = 1, nrow = 2,
+             heights=c(3, 5))
+
+```
+
+## Vaccinations
+
+```{r Vac}
+vac_p1 <- covid_data %>% 
+  filter(iso3c == "ARG",
+         date > "2020-03-02") %>% 
+  ggplot(aes(x = date,
+             y = total_vaccinations)) +
+  geom_line(color ="orange") +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) 
+
+vac_p2 <- covid_data %>%
+  filter(iso3c == "ARG",
+         date > "2020-03-02") %>% 
+  ggplot(aes(x = date,
+             y = new_cases)) +
+  geom_col(fill = "Steelblue") 
+
+grid.arrange(vac_p1, vac_p2, ncol = 1, nrow = 2,
+             heights=c(3, 5))
+```
+
+```{r vacc-comp}
+top15_vacc <- covid_data %>%
+  select(date, country, total_vaccinations,
+         vaccinations_over_pop) %>% 
+  arrange(desc(date), desc(total_vaccinations)) %>% 
+  head(15)
+
+gt(top15_vacc) %>% 
+  tab_header(title = "",
+             subtitle = "") %>% 
+  tab_source_note(md("Source: ")) %>% 
+  cols_label(
+    date = html(""),
+    country = html(""),
+    total_vaccinations = 
+      html(""),
+    vaccinations_over_pop = html("")
+  )
+```
+
+```{r}
+covid_data %>% 
+#  filter(iso3c %in% c('CHN', 'IND', 'USA', 'BRA', 'DEU',
+#                      'IDN', 'TUR', 'RUS', 'ITA', 'CAN',
+#                      'KOR', 'ARG', 'POL', 'SAU','MYS')) %>%
+    select(date, iso3c, country, total_vaccinations,
+         vaccinations_over_pop) %>% 
+  arrange(desc(date), desc(total_vaccinations)) %>% 
+  head(15) %>% 
+  group_by(country) %>% 
+  summarise(vacc = 
+              spk(total_vaccinations, type = "line")) %>% 
+  DT::datatable(escape = FALSE,
+            options = list(fnDrawCallback = 
+  htmlwidgets::JS('function(){HTMLWidgets.staticRender();}'))) %>% 
+  spk_add_deps()
+  
+```
+
+
+# References
