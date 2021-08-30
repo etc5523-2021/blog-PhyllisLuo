@@ -17,7 +17,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidycovid19)
 library(zoo)
 library(tidyverse)
-library(here)
+library(naniar)
 library(ggplot2)
 library(gridExtra)
 library(gt)
@@ -25,83 +25,104 @@ library(DT)
 library(sparkline)
 ```
 
-# Introduction
-
 # Data Description
-https://github.com/joachim-gassen/tidycovid19
+
+The data was generated from the R package tidycovid19 (https://github.com/joachim-gassen/tidycovid19) set up by applied economist Joachim Gassen. The package includes several data set from different sources. The one I use is the data that is merged all data sources and created country-day data set.
 
 ```{r downloaddata}
 covid_df <- 
   download_merged_data(cached = TRUE, silent = TRUE)
 ```
 
+The country we are going to analysis is Argentina. And the key data we focus on in this post is Confirmed Cases and Vaccinations.
+
 ```{r tidydata}
 covid_data <- covid_df %>%
   mutate(
-    new_cases = confirmed - lag(confirmed),
-    ave_new_cases = 
-      rollmean(new_cases, 7, na.pad=TRUE, align="right"),
+    new_cases = (confirmed - lag(confirmed)),
     new_cases = ifelse(new_cases < 0, 
                        0, new_cases),
     new_vaccinations = 
-      total_vaccinations - lag(total_vaccinations),
+      (total_vaccinations - lag(total_vaccinations)),
     new_vaccinations = ifelse(new_vaccinations < 0, 
                        0, new_vaccinations),  
     fatality_rate = 
-           round(deaths/confirmed * 100,2),
-    confirmed_over_pop = 
-      round(confirmed/population * 100, 2),
-    vaccinations_over_pop =
-      round(total_vaccinations/population, 2))
+           round(deaths/confirmed * 100, 2),
+    confirmed_over_100Kpop = 
+      round(confirmed*1e5/population, 0),
+    deaths_over_100Kpop = 
+      round(deaths*1e5/population, 0),
+    vaccinations_over_100Kpop =
+      round(total_vaccinations*1e5/population, 0)) %>% 
+  select(c(1:6, 14, 32:34, 41:46))
 ```
 
-
 # Analysis and Exploration
+
+Firstly, let's review the latest situation of COVID-19 infection in Argentina. As of , the number of confirmed cases, deaths and vaccinations are below:
 
 ```{r latest_arg}
 arg_latest <- covid_data %>% 
   filter(iso3c == "ARG") %>%
-  select(date, confirmed, deaths,  
-         total_vaccinations) %>% 
+  select(date, confirmed, deaths, fatality_rate, total_vaccinations) %>% 
+  mutate(date = as.Date(date, "%d-%b-%Y"),
+         confirmed = round(confirmed/1e5, 2),
+         deaths = round(deaths/1e5, 2),
+         total_vaccinations = 
+           round(total_vaccinations/1e5,2)) %>% 
   arrange(desc(date)) %>% 
   head(1) 
 
 gt(arg_latest) %>% 
   tab_header(title = "Latest Situation of COVID-19 Infection in Argentina",
              subtitle = "Total cases and deaths and vaccinations") %>% 
-  tab_source_note(md("Source: {tidycovid19}: An R Package to Download, Tidy and Visualize Covid-19 Related Data")) %>% 
+  tab_source_note(md("Source: Merged country-day data downloading from R Package {tidycovid19}: https://github.com/joachim-gassen/tidycovid19")) %>% 
   cols_label(
-    confirmed = html("Total Confirmed Cases<br>(ppl)"),
-    deaths = html("Total Death<br>(ppl)"),
+    confirmed = html("Total Confirmed Cases<br>(100K ppl)"),
+    deaths = html("Total Death<br>(100K ppl)"),
+    fatality_rate = html("Fatality Rate<br>(%)"),
     total_vaccinations = 
-      html("Total Vaccinations<br>(dose)")
+      html("Total Vaccinations<br>(100K dose)")
   )
 ```
 
 ## Confirmed Cases
 
-```{r case-comp}
-top10_case <- covid_data %>%
-  select(date, country, confirmed, deaths, 
-         fatality_rate, confirmed_over_pop) %>% 
-  arrange(desc(date), desc(confirmed)) %>% 
-  head(10)
+The table shows the latest number of total confirmed cases, fatality rate and confirmed cases per 100K population by country ordering by confirmed cases from high to low. Argentina is the 8th most cases country. Compared to other top 10 confirmed cases countries, the fatality rate of Argentina is the 4th highest, and confirmed cases per 100K population is just lower than the United States.
 
-gt(top10_case) %>% 
-  tab_header(title = "",
-             subtitle = "") %>% 
-  tab_source_note(md("Source: ")) %>% 
-  cols_label(
-    date = html(""),
-    country = html(""),
-    confirmed = 
-      html(""),
-    deaths = html(""),
-    fatality_rate = html(""),
-    confirmed_over_pop = 
-      html("")
-  )
+```{r case-comp}
+arrrange_case <- covid_data %>%
+  filter(date == max(date)) %>% 
+  select(country, confirmed, fatality_rate, confirmed_over_100Kpop)  %>% 
+  mutate(confirmed = round(confirmed/1e5, 2)) %>% 
+  arrange(desc(confirmed)) %>%  
+  rename(Country = country,
+         `Total Confirmed Cases(100K)` = confirmed,
+         `Fatality Rate(%)` = fatality_rate,
+         `Confirmed per 100K Population` =
+           confirmed_over_100Kpop) 
+
+DT::datatable(arrrange_case, 
+              options = list(pageLength = 10),
+              caption = 
+                htmltools::tags$caption(
+    style = 
+      'caption-side: bottom; text-align: center;',
+    'Table 2: ', 
+    htmltools::em('Latest situation of COVID-19 confirmed cases in different countries'))) %>%
+  formatCurrency('Total Confirmed Cases(100K)',
+                 currency = "", 
+                 interval = 3, 
+                 mark = ",") %>% 
+  formatCurrency('Confirmed per 100K Population',
+                 currency = "", 
+                 interval = 3, 
+                 mark = ",",
+                 digits = 0)
+
 ```
+
+We visualize the spread of Covid-19 in top 10 confirmed cases countries.
 
 ```{r stripes}
 plot_covid19_stripes(
@@ -113,11 +134,12 @@ plot_covid19_stripes(
 ```{r case}
 case_p1 <- covid_data %>% 
   filter(iso3c == "ARG",
-         date > "2020-03-02") %>% 
+         date > "2020-03-02") %>%
+  mutate(fatality_rate = fatality_rate) %>% 
   ggplot(aes(x = date,
              y = fatality_rate)) +
   geom_line(color ="red") +
-  scale_y_continuous(labels = scales::percent) +
+ # scale_y_continuous(labels = scales::percent) +
   theme(axis.title.x=element_blank(),
         axis.text.x=element_blank(),
         axis.ticks.x=element_blank()) 
@@ -125,8 +147,9 @@ case_p1 <- covid_data %>%
 case_p2 <- covid_data %>%
   filter(iso3c == "ARG",
          date > "2020-03-02") %>% 
+  mutate(new_cases_10K = new_cases/10000) %>% 
   ggplot(aes(x = date,
-             y = new_cases)) +
+             y = new_cases_10K)) +
   geom_col(fill = "Steelblue")  
 
 grid.arrange(case_p1, case_p2, ncol = 1, nrow = 2,
@@ -136,12 +159,57 @@ grid.arrange(case_p1, case_p2, ncol = 1, nrow = 2,
 
 ## Vaccinations
 
+```{r vacc-start}
+vacc_start <- covid_df %>% 
+  filter(!is.na(total_vaccinations)) %>%
+  select(country, date) %>% 
+  group_by(country) %>% 
+  summarise(starts_from = min(date)) %>% 
+  arrange(starts_from) %>% 
+  ungroup()
+
+arrange_vacc <- covid_data %>%
+  filter(date == max(date),
+         !is.na(total_vaccinations)) %>% 
+  select(country, total_vaccinations, 
+         vaccinations_over_100Kpop)  %>% 
+  mutate(total_vaccinations = 
+           round(total_vaccinations/1e5, 2)) %>% 
+  arrange(desc(total_vaccinations)) %>%  
+  rename(`Total Vaccinations(100K)` = 
+           total_vaccinations,
+         `Vaccinations per 100K Population` =
+           vaccinations_over_100Kpop) 
+vacc_data <- left_join(arrange_vacc, vacc_start) 
+```
+
+```{r vacc_data}
+DT::datatable(vacc_data, 
+              options = list(pageLength = 10),
+              caption = 
+                htmltools::tags$caption(
+    style = 
+      'caption-side: bottom; text-align: center;',
+    'Table 2: ', 
+    htmltools::em('Latest situation of vaccination in different countries'))) %>%
+  formatCurrency('Total Vaccinations(100K)',
+                 currency = "", 
+                 interval = 3, 
+                 mark = ",") %>% 
+  formatCurrency('Vaccinations per 100K Population',
+                 currency = "", 
+                 interval = 3, 
+                 mark = ",",
+                 digits = 0)
+```
+
 ```{r Vac}
 vac_p1 <- covid_data %>% 
   filter(iso3c == "ARG",
-         date > "2020-03-02") %>% 
+         date > "2020-03-02") %>%
+  mutate(vaccinations_1e07 = total_vaccinations/1e7) %>%
   ggplot(aes(x = date,
-             y = total_vaccinations)) +
+             y = vaccinations_1e07)) +
   geom_line(color ="orange") +
   theme(axis.title.x=element_blank(),
         axis.text.x=element_blank(),
@@ -149,53 +217,16 @@ vac_p1 <- covid_data %>%
 
 vac_p2 <- covid_data %>%
   filter(iso3c == "ARG",
-         date > "2020-03-02") %>% 
+         date > "2020-03-02") %>%
+  mutate(new_cases_10K = new_cases/10000) %>%
   ggplot(aes(x = date,
-             y = new_cases)) +
+             y = new_cases_10K)) +
   geom_col(fill = "Steelblue") 
 
 grid.arrange(vac_p1, vac_p2, ncol = 1, nrow = 2,
              heights=c(3, 5))
 ```
 
-```{r vacc-comp}
-top15_vacc <- covid_data %>%
-  select(date, country, total_vaccinations,
-         vaccinations_over_pop) %>% 
-  arrange(desc(date), desc(total_vaccinations)) %>% 
-  head(15)
-
-gt(top15_vacc) %>% 
-  tab_header(title = "",
-             subtitle = "") %>% 
-  tab_source_note(md("Source: ")) %>% 
-  cols_label(
-    date = html(""),
-    country = html(""),
-    total_vaccinations = 
-      html(""),
-    vaccinations_over_pop = html("")
-  )
-```
-
-```{r}
-covid_data %>% 
-#  filter(iso3c %in% c('CHN', 'IND', 'USA', 'BRA', 'DEU',
-#                      'IDN', 'TUR', 'RUS', 'ITA', 'CAN',
-#                      'KOR', 'ARG', 'POL', 'SAU','MYS')) %>%
-    select(date, iso3c, country, total_vaccinations,
-         vaccinations_over_pop) %>% 
-  arrange(desc(date), desc(total_vaccinations)) %>% 
-  head(15) %>% 
-  group_by(country) %>% 
-  summarise(vacc = 
-              spk(total_vaccinations, type = "line")) %>% 
-  DT::datatable(escape = FALSE,
-            options = list(fnDrawCallback = 
-  htmlwidgets::JS('function(){HTMLWidgets.staticRender();}'))) %>% 
-  spk_add_deps()
-  
-```
-
-
 # References
+
+Joachim Gassen (2021). tidycovid19: Download, Tidy and Visualize Covid-19 Related Data. R package version 0.0.0.9000.
