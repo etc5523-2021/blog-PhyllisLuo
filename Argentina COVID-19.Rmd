@@ -5,14 +5,10 @@ author:
   - Yu Luo
 date: "`r Sys.Date()`"
 output: 
-  bookdown::html_document2:
-    css: monashreport.css
-    includes:
-      before_body: header.html
+  html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
 #install.packages("tidycovid19")
 library(tidycovid19)
 library(zoo)
@@ -22,21 +18,20 @@ library(ggplot2)
 library(gridExtra)
 library(gt)
 library(DT)
-library(sparkline)
 ```
 
 # Data Description
 
 The data was generated from the R package tidycovid19 (https://github.com/joachim-gassen/tidycovid19) set up by applied economist Joachim Gassen. The package includes several data set from different sources. The one I use is the data that is merged all data sources and created country-day data set.
 
-```{r downloaddata}
+```{r downloaddata, include = FALSE}
 covid_df <- 
   download_merged_data(cached = TRUE, silent = TRUE)
 ```
 
-The country we are going to analysis is Argentina. And the key data we focus on in this post is Confirmed Cases and Vaccinations.
+The country we are going to analyze is Argentina. And the critical data we focus on in this post is Confirmed Cases and Vaccinations.
 
-```{r tidydata}
+```{r tidydata, echo = FALSE, message = FALSE, warning = FALSE}
 covid_data <- covid_df %>%
   mutate(
     new_cases = (confirmed - lag(confirmed)),
@@ -59,9 +54,9 @@ covid_data <- covid_df %>%
 
 # Analysis and Exploration
 
-Firstly, let's review the latest situation of COVID-19 infection in Argentina. As of , the number of confirmed cases, deaths and vaccinations are below:
+Firstly, let's review the latest situation of COVID-19 infection in Argentina. As of, the number of confirmed cases, deaths, and vaccinations are below:
 
-```{r latest_arg}
+```{r latest_arg, echo = FALSE, warning = FALSE}
 arg_latest <- covid_data %>% 
   filter(iso3c == "ARG") %>%
   select(date, confirmed, deaths, fatality_rate, total_vaccinations) %>% 
@@ -88,9 +83,9 @@ gt(arg_latest) %>%
 
 ## Confirmed Cases
 
-The table shows the latest number of total confirmed cases, fatality rate and confirmed cases per 100K population by country ordering by confirmed cases from high to low. Argentina is the 8th most cases country. Compared to other top 10 confirmed cases countries, the fatality rate of Argentina is the 4th highest, and confirmed cases per 100K population is just lower than the United States.
+The table shows the latest number of total confirmed cases, fatality rate and confirmed cases per 100K population by country, ordering by confirmed cases from high to low. Argentina is the 8th most cases country. Compared to other top 10 confirmed cases countries, the fatality rate of Argentina is the 4th highest, and confirmed cases per 100K population is just lower than the United States.
 
-```{r case-comp}
+```{r case-comp, echo = FALSE, warning = FALSE}
 arrrange_case <- covid_data %>%
   filter(date == max(date)) %>% 
   select(country, confirmed, fatality_rate, confirmed_over_100Kpop)  %>% 
@@ -122,16 +117,18 @@ DT::datatable(arrrange_case,
 
 ```
 
-We visualize the spread of Covid-19 in top 10 confirmed cases countries.
+We visualize the spread of Covid-19 in the top 10 confirmed cases countries.
 
-```{r stripes}
+```{r stripes, echo = FALSE, warning = FALSE}
 plot_covid19_stripes(
   type = "confirmed", 
   countries  = c("USA", "IND", "BRA", "FRA", "RUS", "GBR", "TUR", "ARG", "COL", "IRN"),
   sort_countries = "countries")
 ```
 
-```{r case}
+The below figure shows the daily confirmed cases and fatality rate. We found Argentina experienced four waves of COVID-19 since 2nd Mar 2020. The most painful period was in the May of 2021, with daily new cases reached about 40,000. The fatality rate was over 8% when COVID-19 started to strike worldwide, then the curve went down and goes flatten since May 2020.
+
+```{r case, echo = FALSE, warning = FALSE}
 case_p1 <- covid_data %>% 
   filter(iso3c == "ARG",
          date > "2020-03-02") %>%
@@ -152,14 +149,14 @@ case_p2 <- covid_data %>%
              y = new_cases_10K)) +
   geom_col(fill = "Steelblue")  
 
-grid.arrange(case_p1, case_p2, ncol = 1, nrow = 2,
+case_p <- grid.arrange(case_p1, case_p2, ncol = 1, nrow = 2,
              heights=c(3, 5))
 
 ```
 
 ## Vaccinations
 
-```{r vacc-start}
+```{r vacc-start, echo = FALSE, warning = FALSE}
 vacc_start <- covid_df %>% 
   filter(!is.na(total_vaccinations)) %>%
   select(country, date) %>% 
@@ -183,7 +180,10 @@ arrange_vacc <- covid_data %>%
 vacc_data <- left_join(arrange_vacc, vacc_start) 
 ```
 
-```{r vacc_data}
+The vaccination in Argentina was from 29 December 2020, and
+Argentina has administered over 41,305,000 COVID vaccines so far; it is the 10th country that has administered most vaccines.
+
+```{r vacc_data, echo = FALSE, warning = FALSE}
 DT::datatable(vacc_data, 
               options = list(pageLength = 10),
               caption = 
@@ -192,18 +192,20 @@ DT::datatable(vacc_data,
       'caption-side: bottom; text-align: center;',
     'Table 2: ', 
     htmltools::em('Latest situation of vaccination in different countries'))) %>%
-  formatCurrency('Total Vaccinations(100K)',
+  formatCurrency('Total Vaccinations(100K dose)',
                  currency = "", 
                  interval = 3, 
                  mark = ",") %>% 
-  formatCurrency('Vaccinations per 100K Population',
+  formatCurrency('Vaccinations per 100K Population(dose)',
                  currency = "", 
                  interval = 3, 
                  mark = ",",
                  digits = 0)
 ```
 
-```{r Vac}
+The COVID-19 vaccination program in Argentina is an ongoing effort of mass immunization. As the government is giving more vaccine shots to people, we may see the 4th wave was controlled rapidly, and the daily confirmed cases keep decreasing.
+
+```{r Vacc, echo = FALSE, warning = FALSE}
 vac_p1 <- covid_data %>% 
   filter(iso3c == "ARG",
          date > "2020-03-02") %>%
@@ -223,7 +225,7 @@ vac_p2 <- covid_data %>%
              y = new_cases_10K)) +
   geom_col(fill = "Steelblue") 
 
-grid.arrange(vac_p1, vac_p2, ncol = 1, nrow = 2,
+vac_p <- grid.arrange(vac_p1, vac_p2, ncol = 1, nrow = 2,
              heights=c(3, 5))
 ```
 
