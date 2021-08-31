@@ -1,8 +1,8 @@
 # My Blog
 
 
-This is the blog of [FILL].
-The URL of this blog is [FILL].
+This is the blog of [Yu Luo].
+The URL of this blog is https://yluo-data-world.netlify.app/.
 
 ## Blog Post 1
 
@@ -10,7 +10,7 @@ This assessment is due Fri Sep 3 2021 11.55PM AEST.
 
 My selected country is Argentina.
 
-The relevant blog post for this assessment is in [FILL].html
+The relevant blog post for this assessment is in [covid19argentina.html] https://yluo-data-world.netlify.app/posts/2021-09-01-covid19argentina/
 
 - [ ] Selected a country
 - [ ] Website with R markdown 
