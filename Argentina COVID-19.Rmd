@@ -192,11 +192,11 @@ DT::datatable(vacc_data,
       'caption-side: bottom; text-align: center;',
     'Table 2: ', 
     htmltools::em('Latest situation of vaccination in different countries'))) %>%
-  formatCurrency('Total Vaccinations(100K dose)',
+  formatCurrency('Total Vaccinations(100K)',
                  currency = "", 
                  interval = 3, 
                  mark = ",") %>% 
-  formatCurrency('Vaccinations per 100K Population(dose)',
+  formatCurrency('Vaccinations per 100K Population',
                  currency = "", 
                  interval = 3, 
                  mark = ",",
