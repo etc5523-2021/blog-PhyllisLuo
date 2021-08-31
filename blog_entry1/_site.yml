@@ -1,0 +1,13 @@
+name: "Yu Luo's Data World"
+title: "Yu Luo's Data World"
+description: |
+  My Blog
+output_dir: "_site"
+theme: theme.css
+navbar:
+  right:
+    - text: "Home"
+      href: index.html
+    - text: "Blog"
+      href: blog.html
+output: distill::distill_article

@@ -1,0 +1,252 @@
+---
+title: "COVID-19 Cases and Vaccinations in Argentina"
+description: |
+  This is an ETC5523 Assignment - Blog Entry 1.
+author:
+  - name: Yu Luo
+date: 09-01-2021
+output:
+  distill::distill_article:
+    self_contained: false
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```
+
+```{r library}
+#install.packages("tidycovid19")
+library(tidycovid19)
+library(tidyverse)
+library(naniar)
+library(lubridate)
+library(ggplot2)
+library(gridExtra)
+library(gt)
+library(DT)
+```
+
+
+We are going to analyze the situation of COVID19 in Argentina in this post. And the critical data we focus on in this post is Confirmed Cases and Vaccinations.
+
+# Data Description
+
+The data was generated from the R package [tidycovid19](https://github.com/joachim-gassen/tidycovid19) set up by applied economist Joachim Gassen. The package includes several data sets from different sources. The one I use is the data that is merged all data sources and created country-day data set.
+
+```{r downloaddata, include = FALSE}
+covid_df <- 
+  download_merged_data(cached = TRUE, silent = TRUE)
+```
+
+```{r tidydata}
+covid_data <- covid_df %>%
+  mutate(
+    new_cases = (confirmed - lag(confirmed)),
+    new_cases = ifelse(new_cases < 0, 
+                       0, new_cases),
+    new_vaccinations = 
+      (total_vaccinations - lag(total_vaccinations)),
+    new_vaccinations = ifelse(new_vaccinations < 0, 
+                       0, new_vaccinations),  
+    fatality_rate = 
+           round(deaths/confirmed * 100, 2),
+    confirmed_over_100Kpop = 
+      round(confirmed*1e5/population, 0),
+    deaths_over_100Kpop = 
+      round(deaths*1e5/population, 0),
+    vaccinations_over_100Kpop =
+      round(total_vaccinations*1e5/population, 0)) %>% 
+  select(c(1:6, 14, 32:34, 41:46))
+```
+
+# Analysis and Exploration
+
+Firstly, let's review the latest situation of COVID-19 infection in Argentina. The Table 1 shows the number of confirmed cases, deaths, and vaccinations:
+
+```{r argdata}
+arg_latest <- covid_data %>% 
+  filter(iso3c == "ARG") %>%
+  select(date, confirmed, deaths, fatality_rate, total_vaccinations) %>% 
+  mutate(confirmed = round(confirmed/1e5, 2),
+         deaths = round(deaths/1e5, 2),
+         total_vaccinations = 
+           round(total_vaccinations/1e5,2)) %>% 
+  arrange(desc(date)) %>% 
+  head(1)
+
+arg_latest$date <- 
+  format(as.Date(arg_latest$date), "%d-%b-%Y")
+```
+
+
+```{r latest-arg}
+gt(arg_latest) %>% 
+  tab_header(title = "Latest Situation of COVID-19 Infections in Argentina") %>% 
+  tab_source_note(md("Source: Merged country-day data downloading from R Package {tidycovid19}: https://github.com/joachim-gassen/tidycovid19")) %>% 
+  tab_source_note(md("Table 1: The number of comfirmed cases, deaths and vaccinations in Argentina")) %>%
+  cols_label(
+    confirmed = html("Total Confirmed Cases<br>(100K ppl)"),
+    deaths = html("Total Deaths<br>(100K ppl)"),
+    fatality_rate = html("Fatality Rate<br>(%)"),
+    total_vaccinations = 
+      html("Total Vaccinations<br>(100K dose)")
+  )
+```
+
+## Confirmed Cases
+
+The Table 2 shows the latest number of total confirmed cases, fatality rate and confirmed cases per 100K population by country, ordering by confirmed cases from high to low. Argentina is the 8th most cases country. Compared to other top 10 confirmed cases countries, the fatality rate of Argentina is the 4th highest, and confirmed cases per 100K population is just lower than the United States.
+
+```{r case-comp}
+arrrange_case <- covid_data %>%
+  filter(date == max(date)) %>% 
+  select(country, confirmed, fatality_rate, confirmed_over_100Kpop)  %>% 
+  mutate(confirmed = round(confirmed/1e5, 2)) %>% 
+  arrange(desc(confirmed)) %>%  
+  rename(Country = country,
+         `Total Confirmed Cases(100K)` = confirmed,
+         `Fatality Rate(%)` = fatality_rate,
+         `Confirmed per 100K Population` =
+           confirmed_over_100Kpop) 
+
+DT::datatable(arrrange_case, 
+              options = list(pageLength = 10),
+              caption = 
+                htmltools::tags$caption(
+    style = 
+      'caption-side: bottom; text-align: center;',
+    'Table 2: ', 
+    htmltools::em('Latest situation of COVID-19 confirmed cases in different countries'))) %>%
+  formatCurrency('Total Confirmed Cases(100K)',
+                 currency = "", 
+                 interval = 3, 
+                 mark = ",") %>% 
+  formatCurrency('Confirmed per 100K Population',
+                 currency = "", 
+                 interval = 3, 
+                 mark = ",",
+                 digits = 0)
+
+```
+
+We visualize the spread of Covid-19 in the top 10 confirmed cases countries.
+
+```{r stripes}
+plot_covid19_stripes(
+  type = "confirmed", 
+  countries  = c("USA", "IND", "BRA", "FRA", "RUS", "GBR", "TUR", "ARG", "COL", "IRN"),
+  sort_countries = "countries")
+```
+
+The below figure shows the daily confirmed cases and fatality rate. We found Argentina experienced four waves of COVID-19 since 2nd Mar 2020. The most painful period was in the May of 2021, with daily new cases reached about 40,000. The fatality rate was over 8% when COVID-19 started to strike worldwide, then the curve went down and goes flatten since May 2020.
+
+```{r case}
+case_p1 <- covid_data %>% 
+  filter(iso3c == "ARG",
+         date > "2020-03-02") %>%
+  mutate(fatality_rate = fatality_rate) %>% 
+  ggplot(aes(x = date,
+             y = fatality_rate)) +
+  geom_line(color ="red") +
+ # scale_y_continuous(labels = scales::percent) +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) 
+
+case_p2 <- covid_data %>%
+  filter(iso3c == "ARG",
+         date > "2020-03-02") %>% 
+  mutate(new_cases_10K = new_cases/10000) %>% 
+  ggplot(aes(x = date,
+             y = new_cases_10K)) +
+  geom_col(fill = "Steelblue")  
+
+case_p <- grid.arrange(case_p1, case_p2, ncol = 1, nrow = 2,
+             heights=c(3, 5))
+
+```
+
+## Vaccinations
+
+```{r vacc-start}
+vacc_start <- covid_df %>% 
+  filter(!is.na(total_vaccinations)) %>%
+  select(country, date) %>% 
+  group_by(country) %>% 
+  summarise(starts_from = min(date)) %>% 
+  arrange(starts_from) %>% 
+  ungroup()
+
+arrange_vacc <- covid_data %>%
+  filter(date == max(date),
+         !is.na(total_vaccinations)) %>% 
+  select(country, total_vaccinations, 
+         vaccinations_over_100Kpop)  %>% 
+  mutate(total_vaccinations = 
+           round(total_vaccinations/1e5, 2)) %>% 
+  arrange(desc(total_vaccinations)) %>%  
+  rename(`Total Vaccinations(100K)` = 
+           total_vaccinations,
+         `Vaccinations per 100K Population` =
+           vaccinations_over_100Kpop) 
+vacc_data <- left_join(arrange_vacc, vacc_start) 
+
+vacc_data$starts_from <- 
+  format(as.Date(vacc_data$starts_from), "%d-%b-%Y")
+```
+
+The vaccination in Argentina was from 29 December 2020, and
+Argentina has administered over 41,305,000 COVID vaccines so far; it is the 10th country that has administered most vaccines. (See Table 3)
+
+```{r vacc-data}
+DT::datatable(vacc_data, 
+              options = list(pageLength = 10),
+              caption = 
+                htmltools::tags$caption(
+    style = 
+      'caption-side: bottom; text-align: center;',
+    'Table 3: ', 
+    htmltools::em('The situation of vaccinations in different countries'))) %>%
+  formatCurrency('Total Vaccinations(100K)',
+                 currency = "", 
+                 interval = 3, 
+                 mark = ",") %>% 
+  formatCurrency('Vaccinations per 100K Population',
+                 currency = "", 
+                 interval = 3, 
+                 mark = ",",
+                 digits = 0)
+```
+
+The COVID-19 vaccination program in Argentina is an ongoing effort of mass immunization. As the government is giving more vaccine shots to people, we may see the 4th wave was controlled rapidly, and the daily confirmed cases keep decreasing.
+
+```{r Vacc}
+vac_p1 <- covid_data %>% 
+  filter(iso3c == "ARG",
+         date > "2020-03-02") %>%
+  mutate(vaccinations_1e07 = total_vaccinations/1e7) %>%
+  ggplot(aes(x = date,
+             y = vaccinations_1e07)) +
+  geom_line(color ="orange") +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) 
+
+vac_p2 <- covid_data %>%
+  filter(iso3c == "ARG",
+         date > "2020-03-02") %>%
+  mutate(new_cases_10K = new_cases/10000) %>%
+  ggplot(aes(x = date,
+             y = new_cases_10K)) +
+  geom_col(fill = "Steelblue") 
+
+vac_p <- grid.arrange(vac_p1, vac_p2, ncol = 1, nrow = 2,
+             heights=c(3, 5)) 
+```
+
+# References
+
+Joachim Gassen (2021). tidycovid19: Download, Tidy and Visualize Covid-19 Related Data. R package version 0.0.0.9000.
+
+

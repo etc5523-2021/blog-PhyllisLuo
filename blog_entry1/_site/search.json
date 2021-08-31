@@ -1,0 +1,19 @@
+{
+  "articles": [
+    {
+      "path": "blog.html",
+      "title": "Blog",
+      "author": [],
+      "contents": "\r\n\r\n\r\n\r\n",
+      "last_modified": "2021-09-01T00:44:17+08:00"
+    },
+    {
+      "path": "index.html",
+      "title": "Blog",
+      "author": [],
+      "contents": "\r\n\r\n\r\n\r\n",
+      "last_modified": "2021-09-01T00:43:12+08:00"
+    }
+  ],
+  "collections": ["posts/posts.json"]
+}
