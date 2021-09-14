@@ -1,0 +1,108 @@
+---
+title: "covid19singapore"
+description: |
+  A short description of the post.
+author:
+  - name: Yu Luo
+date: 09-14-2021
+output:
+  distill::distill_article:
+    self_contained: false
+---
+
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```
+
+```{r library, include =  FALSE}
+library(tidycovid19)
+library(tidyverse)
+library(ggplot2)
+library(lubridate)
+library(plotly)
+library(crosstalk)
+```
+
+# Introduction
+
+# Data Description
+
+```{r readdata, include = FALSE}
+covid_df <- 
+  download_merged_data(cached = TRUE, silent = TRUE)
+```
+
+
+```{r tidydata, include = FALSE}
+covid_se_asia <- covid_df %>% 
+  filter(iso3c %in% c("BRN", "KHM", "IDN", "LAO", "MYS",'MMR', 
+                      'PHL', 'SGP', 'THA', 'TLS', 'VNM')) %>% 
+  select(1:6, 14, population) %>% 
+  filter(date > "2020-01-21") %>% 
+  mutate(new_cases = (confirmed - lag(confirmed)),
+         new_cases = ifelse(new_cases < 0, 
+                       0, new_cases),
+         new_vaccinations = 
+           (total_vaccinations - lag(total_vaccinations)),
+         new_vaccinations = ifelse(new_vaccinations < 0, 
+                       0, new_vaccinations), 
+         fatality_rate = 
+           round(deaths/confirmed, 4))
+```
+
+# Data Exploration
+
+```{r}
+p <- 
+covid_se_asia %>% 
+  filter(date == max(date)) %>% 
+  ggplot(aes(x = confirmed,
+             y = fatality_rate,
+             color = country,
+             size = new_cases)) +
+  geom_point() +
+  scale_y_continuous(labels = ~ scales::percent(., scale = 1))
+
+ggplotly(p)
+```
+
+
+```{r}
+p1 <- covid_se_asia %>%
+  mutate(confirmed_per_K_Pop = 
+           confirmed*1000/population) %>%
+  ggplot(aes(x = date,
+             y = confirmed_per_K_Pop,
+             color = country)) +
+  geom_line() +
+#  scale_y_log10() + 
+#  scale_size_continuous(trans = "log10") +
+  labs(x = "Time", 
+       y = "Number of Comfirmed Cases",
+       title = "")
+
+ggplotly(p1)
+```
+
+```{r}
+p2 <- covid_se_asia %>% 
+  filter(date > "2021-01-11") %>% 
+  mutate(vacc_per_K_Pop = 
+           total_vaccinations*1000/population) %>% 
+  ggplot(aes(x = date,
+             y = vacc_per_K_Pop,
+             color = country)) +
+  geom_line() +
+#  scale_y_log10() + 
+#  scale_size_continuous(trans = "log10") +
+  labs(x = "Time", 
+       y = "Doses of Vaccination",
+       title = "")
+
+ggplotly(p2)  
+```
+
+
+# References
+
