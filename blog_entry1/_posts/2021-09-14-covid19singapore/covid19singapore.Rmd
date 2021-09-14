@@ -54,7 +54,7 @@ covid_se_asia <- covid_df %>%
 # Data Exploration
 
 ```{r}
-p <- 
+p1 <- 
 covid_se_asia %>% 
   filter(date == max(date)) %>% 
   ggplot(aes(x = confirmed,
@@ -64,12 +64,52 @@ covid_se_asia %>%
   geom_point() +
   scale_y_continuous(labels = ~ scales::percent(., scale = 1))
 
-ggplotly(p)
+ggplotly(p1)
 ```
 
 
 ```{r}
-p1 <- covid_se_asia %>%
+crosstalk_data <- covid_se_asia %>% 
+  select(country, date, confirmed, fatality_rate, new_cases) %>% 
+  na.omit() %>% 
+#  mutate(region = stringr::str_replace(region, "&", "and"),
+#         air_pollution = round(air_pollution, 1),
+#         life_expectancy = round(life_expectancy, 1)) %>% 
+  SharedData$new()
+
+p <- crosstalk_data %>% 
+  plot_ly(x = ~date, 
+          y = ~confirmed, 
+          color = ~country,
+          hoverinfo = "text",
+          text = ~paste("Country:", country,
+                        "<br>Date:", date,
+                        "<br>New Cases:", new_cases,
+                        "<br>Confirmed Cases:", confirmed,
+                        "<br>Fatality Rate:",
+                        paste0(round(fatality_rate*100,2), "%")))%>%
+  group_by(country) %>% 
+  add_markers(size = 0.1) %>%
+  layout(xaxis = list(title = "Date"),
+         yaxis = list(title = "Total Confirmed Cases"),
+         legend = list(font = list(size = 16)))
+
+# Combining several selectors
+bscols(widths = c(2, 10),
+       list(filter_slider(id = "slider_date", 
+                          label = "Date",
+                          sharedData = crosstalk_data, 
+                          column = ~date),
+            filter_checkbox(id = "country", 
+                            label = "Country",
+                            sharedData = crosstalk_data, 
+                            group = ~country)),
+       p)
+```
+
+
+```{r}
+p2 <- covid_se_asia %>%
   mutate(confirmed_per_K_Pop = 
            confirmed*1000/population) %>%
   ggplot(aes(x = date,
@@ -82,11 +122,11 @@ p1 <- covid_se_asia %>%
        y = "Number of Comfirmed Cases",
        title = "")
 
-ggplotly(p1)
+ggplotly(p2)
 ```
 
 ```{r}
-p2 <- covid_se_asia %>% 
+p3 <- covid_se_asia %>% 
   filter(date > "2021-01-11") %>% 
   mutate(vacc_per_K_Pop = 
            total_vaccinations*1000/population) %>% 
@@ -100,7 +140,7 @@ p2 <- covid_se_asia %>%
        y = "Doses of Vaccination",
        title = "")
 
-ggplotly(p2)  
+ggplotly(p3)  
 ```
 
 
