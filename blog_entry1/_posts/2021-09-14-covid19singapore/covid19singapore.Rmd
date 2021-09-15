@@ -118,8 +118,8 @@ p <- crosstalk_data %>%
   group_by(country) %>%
   layout(xaxis = list(title = "Date"),
          yaxis = list(title = "The Number of Confirmed Cases"),
-         title = "Total confirmed cases with time change of South-eastern countires",
-         legend = list(font = list(size = 16)))
+         title = "Total confirmed cases with time change",
+         legend = list(font = list(size = 8)))
 
 # Combining several selectors
 bscols(widths = c(2, 10),
