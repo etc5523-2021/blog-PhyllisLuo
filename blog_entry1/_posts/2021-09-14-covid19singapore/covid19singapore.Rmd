@@ -1,7 +1,7 @@
 ---
-title: "covid19singapore"
+title: "An Overview of the Spread of COVID-19 Pandemic in Singapore"
 description: |
-  A short description of the post.
+  We review the COVID-19 spreading in Singapore by comparing with other South-eastern countries.
 author:
   - name: Yu Luo
 date: 09-14-2021
@@ -26,13 +26,20 @@ library(crosstalk)
 
 # Introduction
 
+Thanks to the geographical location, Singapore is one of the world's top transportation hubs for sea and air cargo, offering a choice of 200 shipping lines with links to some 600 ports in 123 countries. However, in the globalized age, the more globalized counties and open to international travels will be more rapidly and more likely to be attracted by global disease transmission. Singapore reported their first case of COVID-19 on 23 January 2020, about one month after the first report from Wuhan, China. As the country with the second-highest population density, Singapore faced a difficult virus-spreading situation. In contrast, Singapore has enhanced effective management of the COVID-19 and lauded its control with a very low number of deaths from the virus.
+
+In this post, we will review the spread of COVID-19 in Singapore and  compare with other South-eastern countries.
+
 # Data Description
+
+The data we use is the merged data generated from the R package [tidycovid19](https://github.com/joachim-gassen/tidycovid19) set up by Joachim Gassen. And we will focus on confirmed cases, fatality rate, vaccinations and related stats in this post.
 
 ```{r readdata, include = FALSE}
 covid_df <- 
   download_merged_data(cached = TRUE, silent = TRUE)
 ```
 
+The South-eastern countries we compare with Singapore includes Brunei, Indonesia, Cambodia, Laos, Myanmar (Burma), Malaysia, Philippines, Thailand, Timor-Leste and Vietnam.
 
 ```{r tidydata, include = FALSE}
 covid_se_asia <- covid_df %>% 
@@ -48,27 +55,45 @@ covid_se_asia <- covid_df %>%
          new_vaccinations = ifelse(new_vaccinations < 0, 
                        0, new_vaccinations), 
          fatality_rate = 
-           round(deaths/confirmed, 4))
+           round(deaths/confirmed, 4),
+         `Fatality rate(%)` = fatality_rate*100)
 ```
 
 # Data Exploration
 
-```{r}
+The figure below shows the latest situation of COVID-19 in Singapore and other South-eastern countries. As of 13 September 2021, the confirmed cases are 72,294, with new cases 607 and a fatality rate of 0.08%. Singapore is the country that the fatality rate is the lowest in the South-eastern Asia region. And only three countries that the total confirmed cases are lower than Singapore: Laos, Timor-Leste and Brunei.
+
+```{r lastest}
 p1 <- 
 covid_se_asia %>% 
   filter(date == max(date)) %>% 
-  ggplot(aes(x = confirmed,
-             y = fatality_rate,
-             color = country,
-             size = new_cases)) +
-  geom_point() +
-  scale_y_continuous(labels = ~ scales::percent(., scale = 1))
+  mutate(`Fatality rate(%)` = fatality_rate*100) %>% 
+  ggplot() +
+  geom_point(aes(x = confirmed,
+                 y = `Fatality rate(%)`,
+                 size = new_cases,
+                 label = country),
+             color = "grey") +
+  geom_point(data = filter(covid_se_asia,
+                           country == "Singapore",
+                           date == max(date)),
+             aes(x = confirmed,
+                 y = `Fatality rate(%)`,
+                 color = country,
+                 size = new_cases)) +
+  scale_y_continuous(labels = ~ scales::percent(., scale = 1)) +
+  labs(x = "The Number of Comfirmed Cases",
+       y = "Fatality Rate",
+       title = "The latest situation of COVID-19 in South-eastern countries(13 Sep 2021)")
 
 ggplotly(p1)
 ```
 
+Here I made an interactive plot to play with; we may select the date and countries shown in the figure to see the confirmed cases with the time change. 
 
-```{r}
+There are two periods when Singapore has ever reached the highest confirmed cases in South-eastern Asia: 23 January to 13 March  2020， and 20 April to 16 June 2020. Still, Singapore rapidly controlled these two waves and flattened the curve.
+
+```{r crosstalk}
 crosstalk_data <- covid_se_asia %>% 
   select(country, date, confirmed, fatality_rate, new_cases) %>% 
   na.omit() %>% 
@@ -81,6 +106,8 @@ p <- crosstalk_data %>%
   plot_ly(x = ~date, 
           y = ~confirmed, 
           color = ~country,
+          type = "scatter", 
+          mode = "lines+markers",
           hoverinfo = "text",
           text = ~paste("Country:", country,
                         "<br>Date:", date,
@@ -88,10 +115,10 @@ p <- crosstalk_data %>%
                         "<br>Confirmed Cases:", confirmed,
                         "<br>Fatality Rate:",
                         paste0(round(fatality_rate*100,2), "%")))%>%
-  group_by(country) %>% 
-  add_markers(size = 0.1) %>%
+  group_by(country) %>%
   layout(xaxis = list(title = "Date"),
-         yaxis = list(title = "Total Confirmed Cases"),
+         yaxis = list(title = "The Number of Confirmed Cases"),
+         title = "Total confirmed cases with time change of South-eastern countires",
          legend = list(font = list(size = 16)))
 
 # Combining several selectors
@@ -107,38 +134,45 @@ bscols(widths = c(2, 10),
        p)
 ```
 
+While we can not just see the total number to judge the COVID-19 spreading in different countries, we also should consider population differences with the total number of confirmed cases and vaccinations.
 
-```{r}
+Below two plots are the number of confirmed cases and doses of vaccinations per thousand people. 
+
+Below, the first plot shows that the number of confirmed cases per thousand people of Singapore kept low after 8 August 2020. Even experienced several pandemic waves, the increases were much slower than all the other South-eastern Asian countries.
+
+```{r cc-pop}
 p2 <- covid_se_asia %>%
-  mutate(confirmed_per_K_Pop = 
-           confirmed*1000/population) %>%
+  mutate(`Confirmed per K.Population` = 
+           round(confirmed*1000/population,0)) %>%
   ggplot(aes(x = date,
-             y = confirmed_per_K_Pop,
+             y = `Confirmed per K.Population`,
              color = country)) +
   geom_line() +
 #  scale_y_log10() + 
 #  scale_size_continuous(trans = "log10") +
   labs(x = "Time", 
-       y = "Number of Comfirmed Cases",
-       title = "")
+       y = "The Number of Comfirmed Cases",
+       title = "The Number of Comfirmed Cases per Thousand People")
 
 ggplotly(p2)
 ```
 
-```{r}
+About the vaccinations, Singapore implemented plans every early and left other countries far behind. It helped Singapore kept exceptional performance in the containment of the spread of the virus after the 3rd and 4th waves.
+
+```{r vacc-pop}
 p3 <- covid_se_asia %>% 
   filter(date > "2021-01-11") %>% 
-  mutate(vacc_per_K_Pop = 
+  mutate(`Vaccinations per K.Population` = 
            total_vaccinations*1000/population) %>% 
   ggplot(aes(x = date,
-             y = vacc_per_K_Pop,
+             y = `Vaccinations per K.Population`,
              color = country)) +
   geom_line() +
 #  scale_y_log10() + 
 #  scale_size_continuous(trans = "log10") +
   labs(x = "Time", 
-       y = "Doses of Vaccination",
-       title = "")
+       y = "Doses of Vaccinations",
+       title = "The Doses of Vaccinations per Thousand People")
 
 ggplotly(p3)  
 ```
@@ -146,3 +180,14 @@ ggplotly(p3)
 
 # References
 
+Joachim Gassen (2021). tidycovid19: Download, Tidy and Visualize Covid-19 Related Data. R package version 0.0.0.9000.
+
+Wickham et al., (2019). Welcome to the tidyverse. Journal of Open Source Software, 4(43), 1686, https://doi.org/10.21105/joss.01686
+
+H. Wickham. ggplot2: Elegant Graphics for Data Analysis. Springer-Verlag New York, 2016.
+
+Garrett Grolemund, Hadley Wickham (2011). Dates and Times Made Easy with lubridate. Journal of Statistical Software, 40(3), 1-25. URL https://www.jstatsoft.org/v40/i03/.
+
+C. Sievert. Interactive Web-Based Data Visualization with R, plotly, and shiny. Chapman and Hall/CRC Florida, 2020.
+
+Joe Cheng and Carson Sievert (2021). crosstalk: Inter-Widget Interactivity for HTML Widgets. R package version 1.1.1. https://CRAN.R-project.org/package=crosstalk
