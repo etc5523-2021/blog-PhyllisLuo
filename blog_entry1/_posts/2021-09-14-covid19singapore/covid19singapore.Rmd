@@ -1,7 +1,7 @@
 ---
 title: "An Overview of the Spread of COVID-19 Pandemic in Singapore"
 description: |
-  We review the COVID-19 spreading in Singapore by comparing with other South-eastern countries.
+  Let's review the the spread of COVID-19 in Singapore by comparing with other South-eastern countries.
 author:
   - name: Yu Luo
 date: 09-14-2021
