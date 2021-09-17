@@ -30,20 +30,20 @@ library(bookdown)
 
 # Introduction
 
-Thanks to the geographical location, Singapore is one of the world's top transportation hubs for sea and air cargo, offering a choice of 200 shipping lines with links to some 600 ports in 123 countries. However, in the globalized age, the more globalized counties and open to international travels will be more rapidly and more likely to be attracted by global disease transmission. Singapore reported their first case of COVID-19 on 23 January 2020, about one month after the first report from Wuhan, China. As the country with the second-highest population density, Singapore faced a difficult virus-spreading situation. In contrast, Singapore has enhanced effective management of the COVID-19 and lauded its control with a very low number of deaths from the virus.
+Thanks to the geographical location, Singapore is one of the world's top transportation hubs for sea and air cargo, offering a choice of 200 shipping lines with links to some 600 ports in 123 countries. However, in the globalized age, the more globalized counties and open to international travels will be more rapidly and more likely to be attracted by global disease transmission. Singapore reported its first case of COVID-19 on 23 January 2020, about one month after the first report from Wuhan, China. As the country with the second-highest population density, Singapore faced a difficult virus-spreading situation. In contrast, Singapore has enhanced effective management of the COVID-19 and lauded its control with a very low number of deaths from the virus.
 
-In this post, we will review the spread of COVID-19 in Singapore and  compare with other South-eastern countries.
+This post will review the spread of COVID-19 in Singapore and compare it with other South-eastern countries.
 
 # Data Description
 
-The data we use is the merged data generated from the R package [tidycovid19](https://github.com/joachim-gassen/tidycovid19) set up by Joachim Gassen. And we will focus on confirmed cases, fatality rate, vaccinations and related stats in this post.
+We use the merged data generated from the R package [tidycovid19](https://github.com/joachim-gassen/tidycovid19) set up by Joachim Gassen. And we will focus on confirmed cases, fatality rate, vaccinations, and related stats in this post.
 
 ```{r readdata, include = FALSE}
 covid_df <- 
   download_merged_data(cached = TRUE, silent = TRUE)
 ```
 
-The South-eastern countries we compare with Singapore includes Brunei, Indonesia, Cambodia, Laos, Myanmar (Burma), Malaysia, Philippines, Thailand, Timor-Leste and Vietnam.
+We compare Singapore countries with South-eastern including Brunei, Indonesia, Cambodia, Laos, Myanmar (Burma), Malaysia, Philippines, Thailand, Timor-Leste, and Vietnam.
 
 ```{r tidydata, include = FALSE}
 covid_se_asia <- covid_df %>% 
@@ -66,6 +66,8 @@ covid_se_asia <- covid_df %>%
 ```
 
 # Data Exploration
+
+## Confirmed Cases of Singapore and other South-eastern Countries
 
 The Figure \@ref(fig:lastest) shows the latest situation of COVID-19 in Singapore and other South-eastern countries. As of 13 September 2021, the confirmed cases are 72,294, with new cases 607 and a fatality rate of 0.08%. Singapore is the country that the fatality rate is the lowest in the South-eastern Asia region. And only three countries that the total confirmed cases are lower than Singapore: Laos, Timor-Leste and Brunei.
 
@@ -94,9 +96,9 @@ covid_se_asia %>%
 ggplotly(p1)
 ```
 
-Here I made an interactive plot \@ref(fig:crosstalk) to play with; we may select the date and countries shown in the figure to see the confirmed cases with the time change. 
+Here I made an interactive plot to play with; we may select the date and countries shown in the figure to see the confirmed cases with the time change. 
 
-There are two periods when Singapore has ever reached the highest confirmed cases in South-eastern Asia: 23 January to 13 March  2020， and 20 April to 16 June 2020. Still, Singapore rapidly controlled these two waves and flattened the curve.
+There are two periods when Singapore has ever reached the highest confirmed cases in South-eastern Asia: 23 January to 13 March  2020 and 20 April to 16 June 2020. Still, Singapore rapidly controlled these two waves and flattened the curve.
 
 ```{r crosstalk, fig.cap = "Total confirmed cases with time change"}
 crosstalk_data <- covid_se_asia %>% 
@@ -140,11 +142,13 @@ bscols(widths = c(2, 10),
        p)
 ```
 
+## Confirmed Cases and Vaccinations per Thousand Population
+
 While we can not just see the total number to judge the COVID-19 spreading in different countries, we also should consider population differences with the total number of confirmed cases and vaccinations.
 
 Below two figures are the number of confirmed cases and doses of vaccinations per thousand people. 
 
-The Figure \@ref(fig:cc-pop) shows that the number of confirmed cases per thousand people of Singapore kept low after 8 August 2020. Even experienced several pandemic waves, the increases were much slower than all the other South-eastern Asian countries.
+Figure \@ref(fig:cc-pop) shows that the number of confirmed cases per thousand people of Singapore kept low after 8 August 2020. Even experienced several pandemic waves, the increases were much slower than all the other South-eastern Asian countries.
 
 ```{r cc-pop, fig.cap="The Number of Comfirmed Cases per Thousand People"}
 p2 <- covid_se_asia %>%
