@@ -67,7 +67,7 @@ covid_se_asia <- covid_df %>%
 
 # Data Exploration
 
-## Confirmed Cases of Singapore and other South-eastern Countries
+**1. Confirmed Cases of Singapore and other South-eastern Countries**
 
 The Figure \@ref(fig:lastest) shows the latest situation of COVID-19 in Singapore and other South-eastern countries. As of 13 September 2021, the confirmed cases are 72,294, with new cases 607 and a fatality rate of 0.08%. Singapore is the country that the fatality rate is the lowest in the South-eastern Asia region. And only three countries that the total confirmed cases are lower than Singapore: Laos, Timor-Leste and Brunei.
 
@@ -142,7 +142,7 @@ bscols(widths = c(2, 10),
        p)
 ```
 
-## Confirmed Cases and Vaccinations per Thousand Population
+**2. Confirmed Cases and Vaccinations per Thousand Population**
 
 While we can not just see the total number to judge the COVID-19 spreading in different countries, we also should consider population differences with the total number of confirmed cases and vaccinations.
 
